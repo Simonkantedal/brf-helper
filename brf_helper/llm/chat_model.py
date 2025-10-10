@@ -1,5 +1,4 @@
 import os
-from typing import List, Dict, Optional
 import google.generativeai as genai
 from dotenv import load_dotenv
 
@@ -35,7 +34,7 @@ class GeminiChat:
         
         self.chat_session = None
     
-    def start_chat(self, history: List[Dict[str, str]] = None) -> None:
+    def start_chat(self, history: list[dict[str, str]] = None) -> None:
         formatted_history = []
         if history:
             for msg in history:
@@ -57,7 +56,7 @@ class GeminiChat:
         response = self.model.generate_content(prompt)
         return response.text
     
-    def get_history(self) -> List[Dict[str, str]]:
+    def get_history(self) -> list[dict[str, str]]:
         if not self.chat_session:
             return []
         

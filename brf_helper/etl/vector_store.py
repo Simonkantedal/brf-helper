@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List, Dict, Optional
 import chromadb
 from chromadb.config import Settings
 
@@ -30,10 +29,10 @@ class BRFVectorStore:
     
     def add_documents(
         self,
-        texts: List[str],
-        embeddings: List[List[float]],
-        metadatas: Optional[List[Dict]] = None,
-        ids: Optional[List[str]] = None
+        texts: list[str],
+        embeddings: list[list[float]],
+        metadatas: list[dict] | None = None,
+        ids: list[str] | None = None
     ) -> None:
         if not self.collection:
             raise ValueError("Collection not created. Call create_collection first.")
@@ -50,10 +49,10 @@ class BRFVectorStore:
     
     def search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         n_results: int = 5,
-        where: Optional[Dict] = None
-    ) -> Dict:
+        where: dict | None = None
+    ) -> dict:
         if not self.collection:
             raise ValueError("Collection not created. Call create_collection first.")
         
@@ -70,7 +69,7 @@ class BRFVectorStore:
             "ids": results["ids"][0]
         }
     
-    def get_collection_info(self) -> Dict:
+    def get_collection_info(self) -> dict:
         if not self.collection:
             raise ValueError("Collection not created.")
         

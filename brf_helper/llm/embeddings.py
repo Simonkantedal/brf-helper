@@ -1,6 +1,5 @@
 import os
 import time
-from typing import List
 import google.generativeai as genai
 from google.api_core import exceptions
 from dotenv import load_dotenv
@@ -25,7 +24,7 @@ class GeminiEmbeddings:
         self.max_retries = max_retries
         self.retry_delay = retry_delay
     
-    def _embed_with_retry(self, content: str, task_type: str) -> List[float]:
+    def _embed_with_retry(self, content: str, task_type: str) -> list[float]:
         for attempt in range(self.max_retries):
             try:
                 result = genai.embed_content(
@@ -43,13 +42,13 @@ class GeminiEmbeddings:
             except Exception as e:
                 raise
     
-    def embed_text(self, text: str) -> List[float]:
+    def embed_text(self, text: str) -> list[float]:
         return self._embed_with_retry(text, "retrieval_document")
     
-    def embed_query(self, query: str) -> List[float]:
+    def embed_query(self, query: str) -> list[float]:
         return self._embed_with_retry(query, "retrieval_query")
     
-    def embed_batch(self, texts: List[str], delay: float = 0.1) -> List[List[float]]:
+    def embed_batch(self, texts: list[str], delay: float = 0.1) -> list[list[float]]:
         embeddings = []
         for text in texts:
             embeddings.append(self.embed_text(text))

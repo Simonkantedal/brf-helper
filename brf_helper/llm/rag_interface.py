@@ -1,5 +1,4 @@
 import logging
-from typing import List, Dict, Optional
 from brf_helper.llm.chat_model import GeminiChat
 from brf_helper.etl.document_processor import DocumentProcessor
 
@@ -16,23 +15,24 @@ class BRFQueryInterface:
         self.document_processor = document_processor
         self.n_results = n_results
         
-        system_instruction = """Du är en expert på svenska bostadsrättsföreningar (BRF) och deras ekonomi.
-Din uppgift är att hjälpa användare att förstå och analysera BRF:ers årsredovisningar.
+        system_instruction = """
+        Du är en expert på svenska bostadsrättsföreningar (BRF) och deras ekonomi.
+        Din uppgift är att hjälpa användare att förstå och analysera BRF:ers årsredovisningar.
 
-När du svarar:
-- Använd alltid informationen från de tillhandahållna dokumenten
-- Svara på svenska
-- Var specifik och hänvisa till siffror när det är möjligt
-- Om du inte hittar informationen i kontexten, säg det tydligt
-- Förklara ekonomiska termer på ett enkelt sätt
-- Jämför gärna olika BRF:er om användaren frågar om flera
+            När du svarar:
+            - Använd alltid informationen från de tillhandahållna dokumenten
+            - Svara på svenska
+            - Var specifik och hänvisa till siffror när det är möjligt
+            - Om du inte hittar informationen i kontexten, säg det tydligt
+            - Förklara ekonomiska termer på ett enkelt sätt
+            - Jämför gärna olika BRF:er om användaren frågar om flera
 
-Fokusera på:
-- Ekonomisk status (resultat, soliditet, skuldsättning)
-- Årsavgifter
-- Underhållsbehov och planer
-- Föreningens verksamhet
-"""
+            Fokusera på:
+            - Ekonomisk status (resultat, soliditet, skuldsättning)
+            - Årsavgifter
+            - Underhållsbehov och planer
+            - Föreningens verksamhet
+        """
         
         self.chat_model = chat_model or GeminiChat(
             system_instruction=system_instruction,
@@ -44,7 +44,7 @@ Fokusera på:
         question: str,
         brf_name: str = None,
         include_sources: bool = True
-    ) -> Dict:
+    ) -> dict:
         logger.info(f"Processing query: {question}")
         
         search_results = self.document_processor.search(
@@ -53,10 +53,8 @@ Fokusera på:
             brf_name=brf_name
         )
         
-        context = self._build_context(search_results)
-        
+        context = self._build_context(search_results)     
         prompt = self._build_prompt(question, context)
-        
         answer = self.chat_model.generate_response(prompt)
         
         response = {
@@ -84,14 +82,15 @@ Fokusera på:
         
         context = self._build_context(search_results)
         
-        enhanced_message = f"""Baserat på följande kontext från BRF-dokument, svara på användarens fråga:
+        enhanced_message = f"""
+        Baserat på följande kontext från BRF-dokument, svara på användarens fråga:
 
-KONTEXT:
-{context}
+        KONTEXT:
+        {context}
 
-ANVÄNDARENS FRÅGA:
-{message}
-"""
+        ANVÄNDARENS FRÅGA:
+        {message}
+        """
         
         if not self.chat_model.chat_session:
             self.chat_model.start_chat()
@@ -100,7 +99,7 @@ ANVÄNDARENS FRÅGA:
         
         return answer
     
-    def _build_context(self, search_results: Dict) -> str:
+    def _build_context(self, search_results: dict) -> str:
         context_parts = []
         
         for doc, metadata in zip(
@@ -117,18 +116,19 @@ ANVÄNDARENS FRÅGA:
         return "\n---\n".join(context_parts)
     
     def _build_prompt(self, question: str, context: str) -> str:
-        return f"""Baserat på följande information från BRF-dokument, besvara frågan.
+        return f"""
+        Baserat på följande information från BRF-dokument, besvara frågan.
 
-KONTEXT FRÅN DOKUMENT:
-{context}
+        KONTEXT FRÅN DOKUMENT:
+        {context}
 
-FRÅGA:
-{question}
+        FRÅGA:
+        {question}
 
-SVAR:
-"""
+        SVAR:
+        """
     
-    def _format_sources(self, search_results: Dict) -> List[Dict]:
+    def _format_sources(self, search_results: dict) -> list[dict]:
         sources = []
         
         for metadata, distance in zip(
@@ -143,7 +143,7 @@ SVAR:
         
         return sources
     
-    def get_conversation_history(self) -> List[Dict[str, str]]:
+    def get_conversation_history(self) -> list[dict[str, str]]:
         return self.chat_model.get_history()
     
     def clear_conversation(self) -> None:
