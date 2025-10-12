@@ -12,6 +12,7 @@ Ask questions about housing cooperative finances in natural language and get AI-
 - 💬 **Chat Interface** - Interactive conversations about BRF reports
 - 🌐 **REST API** - Full-featured FastAPI backend
 - ⚡ **CLI Tool** - Simple command-line interface
+- 🖥️ **Web UI** - Interactive Streamlit frontend
 - 📊 **Source Citations** - Track where information comes from
 
 ## Tech Stack
@@ -20,6 +21,7 @@ Ask questions about housing cooperative finances in natural language and get AI-
 - **Google Gemini** for embeddings and chat
 - **ChromaDB** for vector storage
 - **FastAPI** for REST API
+- **Streamlit** for web UI
 - **Typer** + **Rich** for CLI
 
 ## Quick Start
@@ -55,7 +57,16 @@ cp .env.example .env
 brf ingest data/
 ```
 
-### 4. Query BRF Reports
+### 4. Start the Web UI
+
+```bash
+# Launch Streamlit app
+uv run streamlit run app.py
+```
+
+Open http://localhost:8501 in your browser
+
+**Or use the CLI:**
 
 ```bash
 # Ask a question
@@ -70,7 +81,21 @@ brf info
 
 ## Usage
 
-### CLI Tool (Recommended)
+### Web UI (Recommended)
+
+Start the Streamlit app:
+
+```bash
+uv run streamlit run app.py
+```
+
+The web interface provides:
+- **💬 Chat Tab** - Interactive conversation with your BRF reports
+- **🔍 Query Tab** - Ask single questions with source citations
+- **📤 Upload Tab** - Upload new PDF reports to the database
+- **⚙️ Sidebar** - Filter by BRF name, toggle sources, view database stats
+
+### CLI Tool
 
 ```bash
 # Get help
@@ -161,7 +186,7 @@ brf-helper/
 │   ├── llm/           # Gemini embeddings & chat
 │   └── cli.py         # CLI tool
 ├── tests/             # Test suite
-├── examples/          # Example scripts
+├── app.py             # Streamlit web UI
 ├── data/              # Sample PDF reports
 └── pyproject.toml     # Dependencies
 ```
@@ -252,7 +277,7 @@ brf ingest data/ --reset
 
 ## Roadmap
 
-- [ ] Web frontend
+- [x] Web frontend (Streamlit)
 - [ ] Multi-user support with authentication
 - [ ] Automatic BRF report fetching
 - [ ] Historical trend analysis
