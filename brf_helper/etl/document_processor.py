@@ -75,15 +75,17 @@ class DocumentProcessor:
         
         return results
     
-    def search(self, query: str, n_results: int = 5, brf_name: str = None) -> Dict:
+    def search(self, query: str, n_results: int = 5, brf_name: str = None, use_hybrid: bool = None) -> Dict:
         query_embedding = self.embeddings.embed_query(query)
         
         where = {"brf_name": brf_name} if brf_name else None
         
         results = self.vector_store.search(
             query_embedding=query_embedding,
+            query_text=query,
             n_results=n_results,
-            where=where
+            where=where,
+            use_hybrid=use_hybrid
         )
         
         return results

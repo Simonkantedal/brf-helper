@@ -10,10 +10,12 @@ class BRFQueryInterface:
         self,
         document_processor: DocumentProcessor,
         chat_model: GeminiChat = None,
-        n_results: int = 5
+        n_results: int = 5,
+        use_hybrid: bool = True
     ):
         self.document_processor = document_processor
         self.n_results = n_results
+        self.use_hybrid = use_hybrid
         
         system_instruction = """
         Du är en expert på svenska bostadsrättsföreningar (BRF) och deras ekonomi.
@@ -50,7 +52,8 @@ class BRFQueryInterface:
         search_results = self.document_processor.search(
             query=question,
             n_results=self.n_results,
-            brf_name=brf_name
+            brf_name=brf_name,
+            use_hybrid=self.use_hybrid
         )
         
         context = self._build_context(search_results)     
@@ -77,7 +80,8 @@ class BRFQueryInterface:
         search_results = self.document_processor.search(
             query=message,
             n_results=self.n_results,
-            brf_name=brf_name
+            brf_name=brf_name,
+            use_hybrid=self.use_hybrid
         )
         
         context = self._build_context(search_results)

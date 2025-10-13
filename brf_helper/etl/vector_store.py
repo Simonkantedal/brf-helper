@@ -1,10 +1,12 @@
 from pathlib import Path
 import chromadb
 from chromadb.config import Settings
+from typing import Optional, List, Dict
+from brf_helper.etl.hybrid_retrieval import HybridRetriever
 
 
 class BRFVectorStore:
-    def __init__(self, persist_directory: str = "./chroma_db"):
+    def __init__(self, persist_directory: str = "./chroma_db", enable_hybrid: bool = True):
         self.persist_directory = Path(persist_directory)
         self.persist_directory.mkdir(parents=True, exist_ok=True)
         
@@ -14,6 +16,8 @@ class BRFVectorStore:
         )
         
         self.collection = None
+        self.enable_hybrid = enable_hybrid
+        self.hybrid_retriever = None
     
     def create_collection(self, name: str, reset: bool = False) -> None:
         if reset:
@@ -26,6 +30,10 @@ class BRFVectorStore:
             name=name,
             metadata={"hnsw:space": "cosine"}
         )
+        
+        # Initialize hybrid retriever if enabled
+        if self.enable_hybrid:
+            self.hybrid_retriever = HybridRetriever(self)
     
     def add_documents(
         self,
@@ -46,16 +54,36 @@ class BRFVectorStore:
             metadatas=metadatas,
             ids=ids
         )
+        
+        # Rebuild BM25 index if hybrid retrieval is enabled
+        if self.enable_hybrid and self.hybrid_retriever:
+            self.hybrid_retriever.build_bm25_index(force_rebuild=True)
     
     def search(
         self,
         query_embedding: list[float],
         n_results: int = 5,
-        where: dict | None = None
+        where: dict | None = None,
+        query_text: str = None,
+        use_hybrid: bool = None
     ) -> dict:
         if not self.collection:
             raise ValueError("Collection not created. Call create_collection first.")
         
+        # Determine if hybrid search should be used
+        if use_hybrid is None:
+            use_hybrid = self.enable_hybrid
+        
+        # Use hybrid search if enabled and query text is provided
+        if use_hybrid and self.hybrid_retriever and query_text:
+            return self.hybrid_retriever.search(
+                query=query_text,
+                query_embedding=query_embedding,
+                n_results=n_results,
+                where=where
+            )
+        
+        # Fall back to vector-only search
         results = self.collection.query(
             query_embeddings=[query_embedding],
             n_results=n_results,

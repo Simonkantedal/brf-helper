@@ -7,7 +7,7 @@ Ask questions about housing cooperative finances in natural language and get AI-
 ## Features
 
 - 📄 **PDF Processing** - Extract and chunk BRF annual reports
-- 🔍 **Semantic Search** - Find relevant information using vector embeddings
+- 🔍 **Hybrid Search** - Combines semantic search (vector embeddings) with keyword matching (BM25)
 - 🤖 **AI-Powered Q&A** - Ask questions in Swedish, get accurate answers
 - 💬 **Chat Interface** - Interactive conversations about BRF reports
 - 🌐 **REST API** - Full-featured FastAPI backend
@@ -19,7 +19,7 @@ Ask questions about housing cooperative finances in natural language and get AI-
 
 - **Python 3.13** with `uv` package manager
 - **Google Gemini** for embeddings and chat
-- **ChromaDB** for vector storage
+- **ChromaDB** for vector storage + **BM25** for keyword matching
 - **FastAPI** for REST API
 - **Streamlit** for web UI
 - **Typer** + **Rich** for CLI
@@ -161,17 +161,20 @@ from brf_helper.etl.vector_store import BRFVectorStore
 from brf_helper.llm.embeddings import GeminiEmbeddings
 from brf_helper.llm.rag_interface import BRFQueryInterface
 
-# Initialize components
+# Initialize components with hybrid search enabled (default)
 embeddings = GeminiEmbeddings()
-vector_store = BRFVectorStore()
+vector_store = BRFVectorStore(enable_hybrid=True)
 vector_store.create_collection("brf_reports")
 
 processor = DocumentProcessor(embeddings, vector_store)
-query_interface = BRFQueryInterface(processor)
+query_interface = BRFQueryInterface(processor, use_hybrid=True)
 
-# Ask a question
+# Ask a question - uses hybrid retrieval for better results
 result = query_interface.query("Vad är årets resultat?")
 print(result["answer"])
+
+# Disable hybrid search if needed
+query_interface_vector_only = BRFQueryInterface(processor, use_hybrid=False)
 ```
 
 ## Development
@@ -224,11 +227,13 @@ Create a `.env` file:
 GOOGLE_API_KEY=your_gemini_api_key_here
 ```
 
-### Vector Database
+### Search & Retrieval
 
-- **Location**: `./chroma_db/` (not checked into git)
-- **Chunk size**: 1000 characters
-- **Chunk overlap**: 200 characters
+- **Hybrid Search**: Combines semantic search (ChromaDB) with keyword matching (BM25)
+- **Vector Database**: ChromaDB stored in `./chroma_db/` (not checked into git)
+- **BM25 Index**: Cached in `./chroma_db/bm25_index.pkl` for fast keyword search
+- **Search Weight**: 70% semantic search, 30% keyword matching (configurable)
+- **Chunk size**: 1000 characters with 200 character overlap
 - **Embedding model**: `text-embedding-004`
 - **Chat model**: `gemini-2.0-flash-exp`
 
@@ -278,11 +283,13 @@ brf ingest data/ --reset
 ## Roadmap
 
 - [x] Web frontend (Streamlit)
+- [x] Hybrid retrieval (semantic + keyword search)
 - [ ] Multi-user support with authentication
 - [ ] Automatic BRF report fetching
 - [ ] Historical trend analysis
 - [ ] Export functionality
 - [ ] Docker deployment
+- [ ] Configurable search weights in UI
 
 ## Contributing
 
