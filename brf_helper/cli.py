@@ -4,7 +4,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 from rich.markdown import Markdown
-from typing import Optional
+
 
 from brf_helper.etl.document_processor import DocumentProcessor
 from brf_helper.etl.vector_store import BRFVectorStore
@@ -31,7 +31,7 @@ def get_query_interface() -> BRFQueryInterface:
 @app.command()
 def query(
     question: str = typer.Argument(..., help="Question about BRF reports"),
-    brf_name: Optional[str] = typer.Option(None, "--brf", "-b", help="Filter by specific BRF"),
+    brf_name: str | None = typer.Option(None, "--brf", "-b", help="Filter by specific BRF"),
     sources: bool = typer.Option(True, "--sources/--no-sources", help="Show source citations")
 ):
     """
@@ -68,7 +68,7 @@ def query(
 
 @app.command()
 def chat(
-    brf_name: Optional[str] = typer.Option(None, "--brf", "-b", help="Filter by specific BRF")
+    brf_name: str | None = typer.Option(None, "--brf", "-b", help="Filter by specific BRF")
 ):
     """
     Start an interactive chat session about BRF reports.
@@ -102,7 +102,7 @@ def chat(
 @app.command()
 def ingest(
     path: Path = typer.Argument(..., help="Path to PDF file or directory"),
-    brf_name: Optional[str] = typer.Option(None, "--name", "-n", help="BRF name"),
+    brf_name: str | None = typer.Option(None, "--name", "-n", help="BRF name"),
     reset: bool = typer.Option(False, "--reset", help="Reset collection before ingesting")
 ):
     """
