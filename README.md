@@ -280,16 +280,56 @@ brf ingest data/ --reset
 - Vector database is local (not shared across instances)
 - No authentication (API is open)
 
-## Roadmap
+## Development Roadmap
 
+### Phase 1: Core RAG Foundation ✅
 - [x] Web frontend (Streamlit)
 - [x] Hybrid retrieval (semantic + keyword search)
+- [x] PDF processing and chunking
+- [x] Basic Q&A interface
+
+### Phase 2: Specialized BRF Analysis 🚧 (Current)
+- [x] BRF financial health scoring system (0-100)
+- [x] Pre-built question templates (Financial Stability, Cost Analysis, Risk Assessment)
+- [x] BRF comparison framework
+- [ ] Red flag detection with explanations
+- [ ] Smart analysis dashboard in Streamlit UI
+- [ ] Export functionality for analysis reports
+- [ ] Structured data extraction improvements
+
+### Phase 3: Advanced Features 📋 (Next)
 - [ ] Multi-user support with authentication
 - [ ] Automatic BRF report fetching
 - [ ] Historical trend analysis
-- [ ] Export functionality
-- [ ] Docker deployment
 - [ ] Configurable search weights in UI
+- [ ] Docker deployment
+
+## Specialized Features for Home Buyers
+
+### 🏆 BRF Financial Health Score
+- Comprehensive 0-100 scoring system
+- Five key categories: Financial Stability, Cost Efficiency, Liquidity, Debt Management, Maintenance Readiness
+- Automated metric extraction from annual reports
+- Plain-language explanations and recommendations
+
+### 📋 Smart Question Templates
+- **Financial Stability Package** - Core economic health questions
+- **Cost Analysis Package** - Monthly fees and expense trends
+- **Risk Assessment Package** - Potential problems and red flags
+- **Maintenance Overview Package** - Upcoming renovation needs
+- **Governance Package** - Management and decision-making quality
+
+### ⚖️ BRF Comparison Tool
+- Side-by-side analysis of multiple properties
+- Automated ranking with detailed explanations
+- Key difference highlighting
+- Tailored recommendations for each BRF
+
+### ⚠️ Intelligent Risk Detection
+- Automated red flag identification
+- Financial stability warnings
+- Maintenance and renovation alerts
+- Governance and management concerns
 
 ## Contributing
 
