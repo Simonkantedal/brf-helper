@@ -17,7 +17,7 @@ from brf_helper.analysis.red_flag_detector import RedFlagDetector, RedFlagSeveri
 
 logger = logging.getLogger(__name__)
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 logging.getLogger("chromadb").setLevel(logging.ERROR)
 
 app = typer.Typer(help="BRF Helper - AI-powered Swedish BRF report analysis")
@@ -108,11 +108,19 @@ def chat(
 def ingest(
     path: Path = typer.Argument(..., help="Path to PDF file or directory"),
     brf_name: str | None = typer.Option(None, "--name", "-n", help="BRF name"),
-    reset: bool = typer.Option(False, "--reset", help="Reset collection before ingesting")
+    reset: bool = typer.Option(False, "--reset", help="Reset collection before ingesting"),
+    extract_metrics: bool = typer.Option(True, "--extract-metrics/--no-extract-metrics", help="Extract financial metrics after ingestion"),
+    db_path: str = typer.Option("./data/brf_analysis.db", "--db", help="Path to SQLite database")
 ):
     """
-    Ingest PDF documents into the vector database.
+    Ingest PDF documents into the vector database and extract financial metrics.
+    
+    By default, extracts metrics using LLM queries (1-2 minutes per BRF).
+    Use --no-extract-metrics to skip extraction and only ingest documents.
     """
+    from brf_helper.database.db import BRFDatabase
+    from brf_helper.analysis.metrics_extractor import BRFMetricsExtractor
+    
     embeddings = GeminiEmbeddings()
     vector_store = BRFVectorStore(persist_directory="./chroma_db")
     vector_store.create_collection("brf_reports", reset=reset)
@@ -120,13 +128,18 @@ def ingest(
     chunker = TextChunker(chunk_size=1000, chunk_overlap=200)
     processor = DocumentProcessor(embeddings, vector_store, chunker)
     
+    db = BRFDatabase(db_path)
+    
+    results = []
+    
     if path.is_file():
         with console.status(f"[bold green]Processing {path.name}...", spinner="dots"):
             result = processor.process_pdf(path, brf_name)
+        results = [result]
         
         console.print(f"\n[bold green]✓[/bold green] Processed: {result['brf_name']}")
         console.print(f"  Pages: {result['num_pages']}")
-        console.print(f"  Chunks: {result['num_chunks']}")
+        console.print(f"  Chunks: {result['num_chunks']}\n")
     
     elif path.is_dir():
         with console.status(f"[bold green]Processing directory...", spinner="dots"):
@@ -147,10 +160,48 @@ def ingest(
             )
         
         console.print(table)
+        console.print()
     
     else:
         console.print(f"[bold red]Error:[/bold red] {path} is not a valid file or directory")
         raise typer.Exit(1)
+    
+    for result in results:
+        brf_id = db.create_or_update_brf(
+            brf_name=result['brf_name'],
+            pdf_path=str(result['source']),
+            num_pages=result['num_pages'],
+            num_chunks=result['num_chunks']
+        )
+        logger.info(f"Saved {result['brf_name']} to database (ID: {brf_id})")
+    
+    if extract_metrics and results:
+        console.print("[bold cyan]Extracting financial metrics...[/bold cyan]")
+        console.print("[dim]This will take 1-2 minutes per BRF...[/dim]\n")
+        
+        query_interface = get_query_interface()
+        extractor = BRFMetricsExtractor(query_interface)
+        
+        extraction_table = Table(show_header=True)
+        extraction_table.add_column("BRF Name", style="cyan")
+        extraction_table.add_column("Status", style="green")
+        
+        for result in results:
+            with console.status(f"[bold green]Extracting metrics for {result['brf_name']}...", spinner="dots"):
+                success = extractor.extract_and_store(result['brf_name'], db)
+            
+            status = "✓ Complete" if success else "✗ Failed"
+            extraction_table.add_row(result['brf_name'], status)
+        
+        console.print(extraction_table)
+        console.print(f"\n[bold green]✓[/bold green] Metrics extracted. Stored in database.\n")
+        console.print(f"[dim]Database location: {db_path}[/dim]\n")
+        console.print(f"[dim]Use 'brf analyze <name>' to compute analysis from metrics[/dim]\n")
+    elif not extract_metrics:
+        console.print("[yellow]Skipped metrics extraction.[/yellow]\n")
+        console.print("Use [cyan]brf extract <name>[/cyan] to extract metrics later.\n")
+    
+    db.close()
 
 
 @app.command()
@@ -231,14 +282,15 @@ def analyze(
     brf_name: str = typer.Argument(..., help="Name of BRF to analyze"),
     red_flags_only: bool = typer.Option(False, "--red-flags-only", "-r", help="Show only red flags"),
     full: bool = typer.Option(False, "--full", "-f", help="Show full detailed analysis"),
-    quick: bool = typer.Option(False, "--quick", "-q", help="Skip detailed metric extraction (faster)")
+    db_path: str = typer.Option("./data/brf_analysis.db", "--db", help="Path to SQLite database")
 ):
     """
-    Analyze a BRF's financial health and detect red flags.
+    Show BRF financial health analysis and red flags.
     
-    Note: Full analysis extracts 11 financial metrics which takes 1-2 minutes.
-    Use --quick for faster red flag detection without health scores.
+    Computes analysis on-the-fly from stored raw metrics (instant).
     """
+    from brf_helper.database.db import BRFDatabase
+    
     available_brfs = get_available_brfs()
     
     if not available_brfs:
@@ -254,19 +306,54 @@ def analyze(
         console.print(f"\n[dim]Tip: Use 'brf list' to see all available BRFs[/dim]\n")
         raise typer.Exit(1)
     
-    console.print(f"\n[bold cyan]Analyzing {brf_name}...[/bold cyan]\n")
+    console.print(f"\n[bold cyan]Analysis for {brf_name}[/bold cyan]\n")
     
-    query_interface = get_query_interface()
+    db = BRFDatabase(db_path)
     
-    if quick or red_flags_only:
-        from brf_helper.analysis.brf_analyzer import BRFMetrics
-        console.print("[dim]Running quick analysis (skipping metric extraction)...[/dim]\n")
-        metrics = BRFMetrics(brf_name=brf_name)
-        health_score = None
-    else:
-        with console.status("[bold green]Extracting financial metrics (this may take 1-2 minutes)...", spinner="dots"):
-            analyzer = BRFAnalyzer(query_interface)
-            metrics, health_score = analyzer.analyze_brf(brf_name, include_red_flags=False)
+    # Get raw metrics from database
+    data = db.get_brf_with_metrics(brf_name)
+    
+    if not data or not data.brf.has_metrics:
+        console.print("[yellow]No metrics found for this BRF.[/yellow]")
+        console.print("Run [cyan]brf ingest <path> --extract-metrics[/cyan] to extract metrics first.\n")
+        db.close()
+        raise typer.Exit(1)
+    
+    # Convert database metrics to BRFMetrics format (only fields that BRFMetrics accepts)
+    metrics_dict = {}
+    if data.metrics:
+        for key in ['annual_result', 'operating_result', 'total_debt', 'equity', 'solvency_ratio',
+                    'liquid_assets', 'cash_flow', 'interest_costs', 'monthly_fee_per_sqm', 
+                    'maintenance_reserves']:
+            value = getattr(data.metrics, key, None)
+            if value is not None:
+                metrics_dict[key] = value
+    
+    # Add building info from BRF table (BRFMetrics accepts these)
+    if data.brf.building_year:
+        metrics_dict['building_year'] = data.brf.building_year
+    if data.brf.num_apartments:
+        metrics_dict['num_apartments'] = data.brf.num_apartments
+    if data.brf.total_area:
+        metrics_dict['total_area'] = data.brf.total_area
+    
+    # Compute health scores from raw metrics
+    with console.status("[bold green]Computing analysis...", spinner="dots"):
+        from brf_helper.analysis.brf_analyzer import BRFMetrics, BRFAnalyzer
+        
+        # Create BRFMetrics object from dict
+        brf_metrics = BRFMetrics(brf_name=brf_name, **metrics_dict)
+        
+        # Calculate health score (doesn't need query_interface for calculation)
+        query_interface = get_query_interface()
+        analyzer = BRFAnalyzer(query_interface)
+        health_score = analyzer.calculate_health_score(brf_metrics)
+        
+        # Detect red flags
+        detector = RedFlagDetector()
+        red_flag_report = detector.detect_red_flags(brf_metrics)
+    
+    metrics = data.metrics
     
     if not red_flags_only and health_score:
         console.print("[bold green]Financial Health Score[/bold green]")
@@ -302,10 +389,6 @@ def analyze(
         console.print(score_table)
         console.print()
     
-    with console.status("[bold green]Detecting red flags...", spinner="dots"):
-        detector = RedFlagDetector(query_interface if not quick else None)
-        red_flag_report = detector.detect_red_flags(metrics, health_score)
-    
     console.print(f"[bold yellow]Red Flag Analysis[/bold yellow]")
     console.print(f"Overall Risk Level: [bold]{_get_risk_color(red_flag_report.overall_risk_level)}{red_flag_report.overall_risk_level}[/bold]")
     console.print(f"Total Red Flags: {red_flag_report.total_red_flags}")
@@ -331,18 +414,12 @@ def analyze(
             console.print(f"   [yellow]Impact:[/yellow] {flag.impact}")
             console.print(f"   [green]Recommendation:[/green] {flag.recommendation}")
             if flag.evidence:
-                console.print(f"   [dim]Evidence: {flag.evidence}[/dim]")
+                console.print(f"   [dim]Evidence: {flag.evidence[:200]}...[/dim]" if len(flag.evidence) > 200 else f"   [dim]Evidence: {flag.evidence}[/dim]")
             console.print()
     else:
         console.print("✅ [bold green]No red flags detected![/bold green]\n")
     
-    if red_flag_report.immediate_actions:
-        console.print("[bold cyan]⚡ Immediate Actions Required[/bold cyan]\n")
-        for action in red_flag_report.immediate_actions:
-            console.print(f"  • {action}")
-        console.print()
-    
-    if full and not red_flags_only:
+    if full and not red_flags_only and metrics:
         console.print("[bold cyan]Key Metrics[/bold cyan]\n")
         
         metrics_table = Table(show_header=True)
@@ -363,30 +440,14 @@ def analyze(
             metrics_table.add_row("Kassaflöde", f"{metrics.cash_flow:,.0f} kr")
         if metrics.maintenance_reserves is not None:
             metrics_table.add_row("Underhållsreserver", f"{metrics.maintenance_reserves:,.0f} kr")
-        if metrics.building_year is not None:
-            age = 2024 - metrics.building_year
-            metrics_table.add_row("Byggår", f"{metrics.building_year} ({age} år)")
+        if data.brf.building_year is not None:
+            age = 2024 - data.brf.building_year
+            metrics_table.add_row("Byggår", f"{data.brf.building_year} ({age} år)")
         
         console.print(metrics_table)
         console.print()
-        
-        if health_score.strengths:
-            console.print("[bold green]Strengths[/bold green]")
-            for strength in health_score.strengths:
-                console.print(f"  ✓ {strength}")
-            console.print()
-        
-        if health_score.concerns:
-            console.print("[bold yellow]Concerns[/bold yellow]")
-            for concern in health_score.concerns:
-                console.print(f"  ⚠ {concern}")
-            console.print()
-        
-        if health_score.recommendations:
-            console.print("[bold cyan]Recommendations[/bold cyan]")
-            for rec in health_score.recommendations:
-                console.print(f"  → {rec}")
-            console.print()
+    
+    db.close()
 
 
 def _get_risk_color(risk_level: str) -> str:
@@ -416,6 +477,26 @@ def _get_severity_emoji(severity: RedFlagSeverity) -> str:
         RedFlagSeverity.HIGH: "🟠",
         RedFlagSeverity.MEDIUM: "🟡",
         RedFlagSeverity.LOW: "🟢"
+    }
+    return emojis.get(severity, "⚪")
+
+
+def _get_db_severity_style(severity: str) -> str:
+    styles = {
+        "critical": "red bold",
+        "high": "red",
+        "medium": "yellow",
+        "low": "green"
+    }
+    return styles.get(severity, "white")
+
+
+def _get_db_severity_emoji(severity: str) -> str:
+    emojis = {
+        "critical": "🔴",
+        "high": "🟠",
+        "medium": "🟡",
+        "low": "🟢"
     }
     return emojis.get(severity, "⚪")
 

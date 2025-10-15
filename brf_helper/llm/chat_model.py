@@ -9,7 +9,7 @@ class GeminiChat:
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "gemini-2.5-pro",
+        model: str = "gemini-2.5-flash",
         temperature: float = 0.7,
         system_instruction: str | None = None
     ):
