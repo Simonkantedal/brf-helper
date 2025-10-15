@@ -142,15 +142,25 @@ class BRFAnalyzer:
             **explanations
         )
     
-    def analyze_brf(self, brf_name: str) -> Tuple[BRFMetrics, BRFHealthScore]:
+    def analyze_brf(
+        self, 
+        brf_name: str, 
+        include_red_flags: bool = True
+    ) -> Tuple[BRFMetrics, BRFHealthScore]:
         """Complete analysis of a BRF - extract metrics and calculate health score"""
         logger.info(f"Starting complete analysis of BRF: {brf_name}")
         
-        # Extract metrics
         metrics = self.extract_metrics(brf_name)
         
-        # Calculate health score
         health_score = self.calculate_health_score(metrics)
+        
+        if include_red_flags:
+            from brf_helper.analysis.red_flag_detector import RedFlagDetector
+            detector = RedFlagDetector(query_interface=self.query_interface)
+            red_flag_report = detector.detect_red_flags(metrics, health_score)
+            
+            if red_flag_report.total_red_flags > 0:
+                health_score.red_flags = [rf.title for rf in red_flag_report.red_flags[:5]]
         
         logger.info(f"Analysis complete for {brf_name}. Overall score: {health_score.overall_score}/100")
         

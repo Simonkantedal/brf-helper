@@ -110,6 +110,9 @@ class BRFQueryInterface:
             search_results["documents"],
             search_results["metadatas"]
         ):
+            if metadata is None:
+                metadata = {}
+            
             brf = metadata.get("brf_name", "Okänd BRF")
             page = metadata.get("page_number", "?")
             
