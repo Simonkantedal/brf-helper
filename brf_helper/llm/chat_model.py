@@ -9,8 +9,8 @@ class GeminiChat:
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "gemini-2.5-flash",
-        temperature: float = 0.7,
+        model: str = "gemini-2.5-pro",
+        temperature: float = 0.0,
         system_instruction: str | None = None
     ):
         self.api_key = api_key or os.getenv("GOOGLE_API_KEY")

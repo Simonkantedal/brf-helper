@@ -67,7 +67,7 @@ class BRFFinancialMetrics:
     solvency_ratio: Optional[float] = None
     
     # Per-apartment metrics
-    monthly_fee_per_sqm: Optional[float] = None
+    annual_fee_per_sqm: Optional[float] = None
     annual_fee_per_apartment: Optional[float] = None
     
     # Reserves

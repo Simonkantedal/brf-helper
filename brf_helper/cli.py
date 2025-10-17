@@ -323,7 +323,7 @@ def analyze(
     metrics_dict = {}
     if data.metrics:
         for key in ['annual_result', 'operating_result', 'total_debt', 'equity', 'solvency_ratio',
-                    'liquid_assets', 'cash_flow', 'interest_costs', 'monthly_fee_per_sqm', 
+                    'liquid_assets', 'cash_flow', 'interest_costs', 'annual_fee_per_sqm', 
                     'maintenance_reserves']:
             value = getattr(data.metrics, key, None)
             if value is not None:
@@ -432,8 +432,8 @@ def analyze(
             metrics_table.add_row("Rörelseresultat", f"{metrics.operating_result:,.0f} kr")
         if metrics.solvency_ratio is not None:
             metrics_table.add_row("Soliditet", f"{metrics.solvency_ratio:.1f}%")
-        if metrics.monthly_fee_per_sqm is not None:
-            metrics_table.add_row("Månadsavgift/kvm", f"{metrics.monthly_fee_per_sqm:.0f} kr")
+        if metrics.annual_fee_per_sqm is not None:
+            metrics_table.add_row("Årsavgift/kvm", f"{metrics.annual_fee_per_sqm:.0f} kr")
         if metrics.liquid_assets is not None:
             metrics_table.add_row("Likvida medel", f"{metrics.liquid_assets:,.0f} kr")
         if metrics.cash_flow is not None:

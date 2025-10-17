@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS brf_financial_metrics (
     solvency_ratio REAL,                   -- Soliditet (%)
     
     -- Per-apartment metrics
-    monthly_fee_per_sqm REAL,             -- Månadsavgift per kvm
+    annual_fee_per_sqm REAL,              -- Årsavgift per kvm (as stated in reports)
     annual_fee_per_apartment REAL,        -- Årsavgift per lägenhet
     
     -- Reserves and funds

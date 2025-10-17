@@ -16,43 +16,44 @@ class BRFMetricsExtractor:
         self.query_interface = query_interface
         
         # Queries to extract RAW metrics (no analysis/interpretation)
+        # IMPORTANT: Strict prompts to avoid extracting wrong values (e.g. report year instead of building year)
         self.metric_queries = {
             # Income statement
-            "annual_result": "Vad är årets resultat? Ange endast siffran i kronor.",
-            "operating_result": "Vad är rörelseresultatet? Ange endast beloppet i kronor.",
-            "total_income": "Vad är de totala intäkterna? Ange endast beloppet i kronor.",
-            "total_expenses": "Vad är de totala kostnaderna? Ange endast beloppet i kronor.",
+            "annual_result": "Vad är årets resultat enligt resultaträkningen? Ange ENDAST siffran i kronor från den senaste räkenskapsperioden. Om du inte hittar det exakta värdet, svara 'OKÄNT'.",
+            "operating_result": "Vad är rörelseresultatet enligt resultaträkningen? Ange ENDAST beloppet i kronor. Om du inte hittar det, svara 'OKÄNT'.",
+            "total_income": "Vad är de totala intäkterna enligt resultaträkningen? Ange ENDAST beloppet i kronor. Om du inte hittar det, svara 'OKÄNT'.",
+            "total_expenses": "Vad är de totala kostnaderna enligt resultaträkningen? Ange ENDAST beloppet i kronor. Om du inte hittar det, svara 'OKÄNT'.",
             
             # Costs breakdown
-            "interest_costs": "Hur mycket betalar föreningen i räntekostnader per år? Ange endast beloppet i kronor (oftast negativt).",
-            "maintenance_costs": "Vad är underhållskostnaderna? Ange endast beloppet i kronor.",
-            "operation_costs": "Vad är driftskostnaderna? Ange endast beloppet i kronor.",
+            "interest_costs": "Hur mycket betalar föreningen i räntekostnader per år enligt resultaträkningen? Ange ENDAST beloppet i kronor. Om du inte hittar det, svara 'OKÄNT'.",
+            "maintenance_costs": "Vad är underhållskostnaderna enligt resultaträkningen? Ange ENDAST beloppet i kronor. Om du inte hittar det, svara 'OKÄNT'.",
+            "operation_costs": "Vad är driftskostnaderna enligt resultaträkningen? Ange ENDAST beloppet i kronor. Om du inte hittar det, svara 'OKÄNT'.",
             
             # Cash flow
-            "cash_flow": "Vad är föreningens kassaflöde för året? Ange endast beloppet i kronor.",
+            "cash_flow": "Vad är föreningens kassaflöde för året enligt kassaflödesanalysen? Ange ENDAST beloppet i kronor. Om du inte hittar det, svara 'OKÄNT'.",
             
             # Assets
-            "liquid_assets": "Hur mycket likvida medel (kassa och bank) har föreningen? Ange endast beloppet i kronor.",
-            "total_assets": "Vad är föreningens totala tillgångar? Ange endast beloppet i kronor.",
+            "liquid_assets": "Hur mycket likvida medel (kassa och bank) har föreningen enligt balansräkningen? Ange ENDAST beloppet i kronor. Om du inte hittar det, svara 'OKÄNT'.",
+            "total_assets": "Vad är föreningens totala tillgångar enligt balansräkningen? Ange ENDAST beloppet i kronor. Om du inte hittar det, svara 'OKÄNT'.",
             
             # Liabilities
-            "total_debt": "Vad är föreningens totala skulder? Ange endast beloppet i kronor.",
-            "long_term_debt": "Vad är de långfristiga skulderna? Ange endast beloppet i kronor.",
+            "total_debt": "Vad är föreningens totala skulder enligt balansräkningen? Ange ENDAST beloppet i kronor. Om du inte hittar det, svara 'OKÄNT'.",
+            "long_term_debt": "Vad är de långfristiga skulderna enligt balansräkningen? Ange ENDAST beloppet i kronor. Om du inte hittar det, svara 'OKÄNT'.",
             
             # Equity
-            "equity": "Vad är föreningens egna kapital? Ange endast beloppet i kronor.",
+            "equity": "Vad är föreningens egna kapital enligt balansräkningen? Ange ENDAST beloppet i kronor. Om du inte hittar det, svara 'OKÄNT'.",
             
             # Ratios (if stated in report)
-            "solvency_ratio": "Vad är föreningens soliditet? Om det anges i rapporten, ange endast siffran i procent.",
+            "solvency_ratio": "Vad är föreningens soliditet i procent? Ange ENDAST siffran om den uttryckligen anges i rapporten. Beräkna INTE och gissa INTE. Om du inte hittar det, svara 'OKÄNT'.",
             
             # Per-apartment metrics
-            "monthly_fee_per_sqm": "Vad är den genomsnittliga månadsavgiften per kvadratmeter? Ange endast siffran i kronor per kvm.",
+            "annual_fee_per_sqm": "Vad är den genomsnittliga årsavgiften per kvadratmeter i kronor? Leta efter 'avgift per kvm' eller liknande. Ange ENDAST siffran om den uttryckligen anges. Beräkna INTE och gissa INTE. Om du inte hittar det, svara 'OKÄNT'.",
             
             # Reserves
-            "maintenance_reserves": "Hur mycket har föreningen avsatt för underhåll och renoveringar (underhållsfond)? Ange endast beloppet i kronor.",
+            "maintenance_reserves": "Hur mycket har föreningen avsatt för underhåll och renoveringar (underhållsfond eller renoveringsfond)? Ange ENDAST beloppet i kronor om det finns en specifik fond. Om du inte hittar det, svara 'OKÄNT'.",
             
-            # Building info
-            "building_info": "Vilket år byggdes fastigheten? Hur många lägenheter finns det? Vad är den totala arean i kvadratmeter?",
+            # Building info - be very specific to avoid confusing with report year
+            "building_info": "Vilket år byggdes/färdigställdes fastigheten ursprungligen (INTE rapportåret, utan när byggnaden konstruerades)? Hur många lägenheter/bostadsrätter finns det? Vad är den totala bostadsarean i kvadratmeter? Om någon information saknas, skriv 'OKÄNT' för den delen.",
         }
         
         # Queries for boolean/text extracts
@@ -186,6 +187,11 @@ class BRFMetricsExtractor:
         
         import re
         
+        # Check if model explicitly said it doesn't know
+        text_lower = text.lower().strip()
+        if text_lower in ['okänt', 'vet ej', 'uppgift saknas', 'finns inte', 'ej angiven', 'unknown']:
+            return None
+        
         # Remove common Swedish currency and formatting
         text = text.replace(" kr", "").replace(" kronor", "").replace(" SEK", "")
         text = text.replace(" ", "").replace(",", ".")
@@ -201,6 +207,10 @@ class BRFMetricsExtractor:
             if matches:
                 try:
                     value = float(matches[0].replace(",", "."))
+                    # Sanity check: if value looks like a year (1900-2100), it's probably wrong
+                    if 1900 <= value <= 2100:
+                        logger.warning(f"Suspicious value that looks like a year: {value}. Returning None.")
+                        return None
                     return value
                 except ValueError:
                     continue

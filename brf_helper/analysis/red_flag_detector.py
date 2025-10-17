@@ -388,28 +388,30 @@ class RedFlagDetector:
     def _check_operational_issues(self, metrics: BRFMetrics) -> List[RedFlag]:
         flags = []
         
-        if metrics.monthly_fee_per_sqm is not None:
-            if metrics.monthly_fee_per_sqm > self.severity_thresholds["monthly_fee_high"]:
+        if metrics.annual_fee_per_sqm is not None:
+            # Convert annual to monthly for comparison
+            monthly_equivalent = metrics.annual_fee_per_sqm / 12
+            if monthly_equivalent > self.severity_thresholds["monthly_fee_high"]:
                 flags.append(RedFlag(
                     title="Mycket hög månadsavgift",
                     category=RedFlagCategory.OPERATIONAL,
                     severity=RedFlagSeverity.MEDIUM,
-                    description=f"Månadsavgiften är {metrics.monthly_fee_per_sqm:.0f} kr/kvm, vilket är högt jämfört med marknaden.",
+                    description=f"Månadsavgiften är {monthly_equivalent:.0f} kr/kvm (årsavgift: {metrics.annual_fee_per_sqm:.0f} kr/kvm), vilket är högt jämfört med marknaden.",
                     impact="Höga löpande kostnader påverkar din ekonomi och kan göra lägenheten svårsåld.",
                     recommendation="Jämför med liknande föreningar. Kontrollera vad som ingår i avgiften och varför den är hög.",
-                    evidence=f"Månadsavgift: {metrics.monthly_fee_per_sqm:.0f} kr/kvm",
-                    metric_value=metrics.monthly_fee_per_sqm
+                    evidence=f"Årsavgift: {metrics.annual_fee_per_sqm:.0f} kr/kvm ({monthly_equivalent:.0f} kr/kvm/månad)",
+                    metric_value=metrics.annual_fee_per_sqm
                 ))
-            elif metrics.monthly_fee_per_sqm > self.severity_thresholds["monthly_fee_medium"]:
+            elif monthly_equivalent > self.severity_thresholds["monthly_fee_medium"]:
                 flags.append(RedFlag(
                     title="Hög månadsavgift",
                     category=RedFlagCategory.OPERATIONAL,
                     severity=RedFlagSeverity.LOW,
-                    description=f"Månadsavgiften är {metrics.monthly_fee_per_sqm:.0f} kr/kvm.",
+                    description=f"Månadsavgiften är {monthly_equivalent:.0f} kr/kvm (årsavgift: {metrics.annual_fee_per_sqm:.0f} kr/kvm).",
                     impact="Något högre än genomsnittet.",
                     recommendation="Kontrollera vad som ingår och jämför med alternativ.",
-                    evidence=f"Månadsavgift: {metrics.monthly_fee_per_sqm:.0f} kr/kvm",
-                    metric_value=metrics.monthly_fee_per_sqm
+                    evidence=f"Årsavgift: {metrics.annual_fee_per_sqm:.0f} kr/kvm ({monthly_equivalent:.0f} kr/kvm/månad)",
+                    metric_value=metrics.annual_fee_per_sqm
                 ))
         
         return flags

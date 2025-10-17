@@ -16,7 +16,7 @@ class BRFMetrics:
     interest_costs: Optional[float] = None  # Räntekostnader
     cash_flow: Optional[float] = None  # Kassaflöde
     liquid_assets: Optional[float] = None  # Likvida medel
-    monthly_fee_per_sqm: Optional[float] = None  # Årsavgift per kvm/månad
+    annual_fee_per_sqm: Optional[float] = None  # Årsavgift per kvm
     total_debt: Optional[float] = None  # Skulder
     equity: Optional[float] = None  # Eget kapital
     solvency_ratio: Optional[float] = None  # Soliditet
@@ -262,15 +262,17 @@ class BRFAnalyzer:
         """Score cost efficiency based on monthly fees (0-100)"""
         score = 50  # Start with neutral
         
-        if metrics.monthly_fee_per_sqm is not None:
+        if metrics.annual_fee_per_sqm is not None:
+            # Convert annual to monthly for comparison (annual / 12)
+            monthly_equivalent = metrics.annual_fee_per_sqm / 12
             # Benchmark monthly fees (kr/sqm/month)
-            if metrics.monthly_fee_per_sqm < 40:
+            if monthly_equivalent < 40:
                 score += 30  # Very good
-            elif metrics.monthly_fee_per_sqm < 50:
+            elif monthly_equivalent < 50:
                 score += 15  # Good
-            elif metrics.monthly_fee_per_sqm < 60:
+            elif monthly_equivalent < 60:
                 score += 0   # Average
-            elif metrics.monthly_fee_per_sqm < 70:
+            elif monthly_equivalent < 70:
                 score -= 15  # High
             else:
                 score -= 30  # Very high

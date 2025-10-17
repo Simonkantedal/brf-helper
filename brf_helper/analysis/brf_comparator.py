@@ -61,7 +61,7 @@ class BRFComparator:
                 "interpretation": "Visar om intäkterna täcker driftskostnaderna - mycket viktigt att detta är positivt"
             },
             {
-                "metric_name": "monthly_fee_per_sqm",
+                "metric_name": "annual_fee_per_sqm",
                 "display_name": "Månadsavgift per kvm", 
                 "unit": "kr/kvm",
                 "higher_is_better": False,
@@ -325,13 +325,13 @@ class BRFComparator:
                 metrics2, _ = analyses[brf2]
                 
                 # Monthly fee comparison
-                if (metrics1.monthly_fee_per_sqm and metrics2.monthly_fee_per_sqm):
-                    fee_diff = abs(metrics1.monthly_fee_per_sqm - metrics2.monthly_fee_per_sqm)
+                if (metrics1.annual_fee_per_sqm and metrics2.annual_fee_per_sqm):
+                    fee_diff = abs(metrics1.annual_fee_per_sqm - metrics2.annual_fee_per_sqm)
                     if fee_diff > 10:  # More than 10 kr/sqm difference
-                        cheaper = brf1 if metrics1.monthly_fee_per_sqm < metrics2.monthly_fee_per_sqm else brf2
+                        cheaper = brf1 if metrics1.annual_fee_per_sqm < metrics2.annual_fee_per_sqm else brf2
                         expensive = brf2 if cheaper == brf1 else brf1
-                        cheaper_fee = metrics1.monthly_fee_per_sqm if cheaper == brf1 else metrics2.monthly_fee_per_sqm
-                        expensive_fee = metrics2.monthly_fee_per_sqm if expensive == brf2 else metrics1.monthly_fee_per_sqm
+                        cheaper_fee = metrics1.annual_fee_per_sqm if cheaper == brf1 else metrics2.annual_fee_per_sqm
+                        expensive_fee = metrics2.annual_fee_per_sqm if expensive == brf2 else metrics1.annual_fee_per_sqm
                         differences.append(
                             f"**Månadsavgift**: {cheaper} ({cheaper_fee:.0f} kr/kvm) vs {expensive} ({expensive_fee:.0f} kr/kvm) - {fee_diff:.0f} kr skillnad/kvm"
                         )
